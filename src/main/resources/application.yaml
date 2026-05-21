@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: crm
+  config:
+    import: optional:file:./.env[.properties]
+  datasource:
+    url: jdbc:postgresql://postgres:5432/${POSTGRES_APP_DB}
+    username: ${POSTGRES_APP_USER}
+    password: ${POSTGRES_APP_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: public
+    database-change-log-table: DATABASECHANGELOG
+    database-change-log-lock-table: DATABASECHANGELOGLOCK
+    drop-first: false
+
+server:
+  port: ${APPLICATION_PORT:8001}
+

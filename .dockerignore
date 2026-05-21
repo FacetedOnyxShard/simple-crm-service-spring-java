@@ -1,0 +1,13 @@
+.*
+.*/
+venv/
+.git/
+
+build/
+
+Dockerfile
+dockerfile
+docker-compose.*
+
+*.txt
+*.md
