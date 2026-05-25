@@ -5,7 +5,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.shift.crm.dto.*;
+import ru.shift.crm.dto.analytics.BestPeriodResponse;
 import ru.shift.crm.entity.Seller;
+import ru.shift.crm.service.AnalyticsService;
 import ru.shift.crm.service.SellerService;
 import ru.shift.crm.service.TransactionService;
 
@@ -17,6 +19,7 @@ import java.util.List;
 public class SellerController {
     private final SellerService sellerService;
     private final TransactionService transactionService;
+    private final AnalyticsService analyticsService;
 
     @GetMapping
     public List<Seller> getAllSellers() {
@@ -54,5 +57,12 @@ public class SellerController {
     @GetMapping("/{id}/transactions")
     public List<TransactionResponse> getSellerTransactions(@PathVariable Long id) {
         return transactionService.getTransactionsBySellerId(id);
+    }
+
+    @GetMapping("/{id}/best-period")
+    public ResponseEntity<BestPeriodResponse> getBestPeriod(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "MONTH") String periodSize) {
+        return ResponseEntity.ok(analyticsService.getBestPeriod(id, periodSize));
     }
 }

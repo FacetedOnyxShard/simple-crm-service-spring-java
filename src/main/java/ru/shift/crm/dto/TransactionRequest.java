@@ -3,6 +3,7 @@ package ru.shift.crm.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import ru.shift.crm.entity.PaymentType;
 import ru.shift.crm.entity.Seller;
 import ru.shift.crm.entity.Transaction;
 
@@ -21,7 +22,7 @@ public record TransactionRequest(
         BigDecimal amount,
 
         @NotNull(message = "Payment Type is required")
-        String paymentType,
+        PaymentType paymentType,
 
         LocalDateTime transactionDate
 ) {

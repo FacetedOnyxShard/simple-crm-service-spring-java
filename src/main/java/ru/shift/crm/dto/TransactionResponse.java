@@ -1,18 +1,16 @@
 package ru.shift.crm.dto;
 
+import ru.shift.crm.entity.PaymentType;
 import ru.shift.crm.entity.Transaction;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * DTO for {@link Transaction}
- */
 public record TransactionResponse(
         Long id,
         Long sellerId,
         BigDecimal amount,
-        String paymentType,
+        PaymentType paymentType,
         LocalDateTime transactionDate
 ) {
     public static TransactionResponse from(Transaction transaction) {

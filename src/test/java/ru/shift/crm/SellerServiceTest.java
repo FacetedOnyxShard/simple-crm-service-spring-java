@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.shift.crm.dto.SellerCreateResponse;
 import ru.shift.crm.dto.SellerUpdateResponse;
 import ru.shift.crm.entity.Seller;
+import ru.shift.crm.exception.ResourceNotFoundException;
 import ru.shift.crm.repository.SellerRepository;
 import ru.shift.crm.service.SellerService;
 
@@ -15,9 +16,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -105,17 +105,30 @@ public class SellerServiceTest {
         Seller newData = Seller.builder().name("X").contactInfo("x@mail.com").build();
 
         assertThatThrownBy(() -> sellerService.update(id, newData))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Seller not found");
     }
 
     @Test
-    void delete_ShouldCallRepository() {
+    void delete_ShouldCallRepositoryWhenExists() {
         Long id = 1L;
+        when(sellerRepository.existsById(id)).thenReturn(true);
         doNothing().when(sellerRepository).deleteById(id);
 
         sellerService.delete(id);
 
+        verify(sellerRepository).existsById(id);
         verify(sellerRepository).deleteById(id);
+    }
+
+    @Test
+    void delete_ShouldNotFailWhenNotExists() {
+        Long id = 99L;
+        when(sellerRepository.existsById(id)).thenReturn(false);
+
+        sellerService.delete(id);
+
+        verify(sellerRepository).existsById(id);
+        verify(sellerRepository, never()).deleteById(any());
     }
 }

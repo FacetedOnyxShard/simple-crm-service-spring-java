@@ -41,8 +41,9 @@ public class Transaction {
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal amount;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private String paymentType;
+    private PaymentType paymentType;
 
     @Column
     @Builder.Default

@@ -8,18 +8,28 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.shift.crm.dto.SellerCreateRequest;
 import ru.shift.crm.dto.SellerUpdateRequest;
 import ru.shift.crm.dto.TransactionRequest;
+import ru.shift.crm.dto.analytics.SellerBelowDto;
+import ru.shift.crm.dto.analytics.TopSellerResponse;
+import ru.shift.crm.entity.PaymentType;
 import ru.shift.crm.entity.Seller;
 import ru.shift.crm.entity.Transaction;
+import ru.shift.crm.exception.ResourceNotFoundException;
 import ru.shift.crm.repository.SellerRepository;
 import ru.shift.crm.repository.TransactionRepository;
+import ru.shift.crm.service.AnalyticsService;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -39,6 +49,9 @@ class CrmApiIntegrationTest {
 
     @Autowired
     private TransactionRepository transactionRepository;
+
+    @MockitoBean
+    private AnalyticsService analyticsService;
 
     @BeforeEach
     void setUp() {
@@ -160,7 +173,7 @@ class CrmApiIntegrationTest {
         Seller seller = sellerRepository.save(
                 new Seller(null, "Seller", "s@mail.com", java.time.LocalDateTime.now(), null));
         Transaction tx = transactionRepository.save(
-                new Transaction(null, seller, BigDecimal.valueOf(50), "CASH", java.time.LocalDateTime.now()));
+                new Transaction(null, seller, BigDecimal.valueOf(50), PaymentType.CASH, java.time.LocalDateTime.now()));
 
         mockMvc.perform(get("/api/sellers/{id}/transactions", seller.getId()))
                 .andExpect(status().isOk())
@@ -168,7 +181,6 @@ class CrmApiIntegrationTest {
                 .andExpect(jsonPath("$[0].amount").value(50.0))
                 .andExpect(jsonPath("$[0].paymentType").value("CASH"));
     }
-
 
     @Test
     void getAllTransactions_Empty() throws Exception {
@@ -183,7 +195,7 @@ class CrmApiIntegrationTest {
                 new Seller(null, "Seller", "s@mail.com", java.time.LocalDateTime.now(), null));
 
         TransactionRequest txReq = new TransactionRequest(seller.getId(),
-                BigDecimal.valueOf(99.99), "CARD", null);
+                BigDecimal.valueOf(99.99), PaymentType.CARD, null);
 
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -201,19 +213,19 @@ class CrmApiIntegrationTest {
 
     @Test
     void createTransaction_SellerNotFound() throws Exception {
-        TransactionRequest txReq = new TransactionRequest(999L, BigDecimal.ONE, "CASH", null);
+        TransactionRequest txReq = new TransactionRequest(999L, BigDecimal.ONE, PaymentType.CASH, null);
 
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(txReq)))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isNotFound());
     }
 
     @Test
     void createTransaction_ValidationError_NegativeAmount() throws Exception {
         TransactionRequest txReq =
                 new TransactionRequest(1L, BigDecimal.valueOf(-10),
-                        "CASH", null);
+                        PaymentType.CASH, null);
 
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -228,7 +240,7 @@ class CrmApiIntegrationTest {
                         java.time.LocalDateTime.now(), null));
         Transaction tx = transactionRepository.save(
                 new Transaction(null, seller, BigDecimal.valueOf(30),
-                        "TRANSFER", java.time.LocalDateTime.now()));
+                        PaymentType.TRANSFER, java.time.LocalDateTime.now()));
 
         mockMvc.perform(get("/api/transactions/{id}", tx.getId()))
                 .andExpect(status().isOk())
@@ -240,5 +252,129 @@ class CrmApiIntegrationTest {
     void getTransactionById_NotFound() throws Exception {
         mockMvc.perform(get("/api/transactions/999"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getTopSeller_shouldReturnTopSeller() throws Exception {
+        TopSellerResponse response = new TopSellerResponse(1L, "Alice", new BigDecimal("500.00"));
+        when(analyticsService.getTopSellerByPeriod(any(), any())).thenReturn(response);
+
+        mockMvc.perform(get("/api/analytics/top-seller")
+                        .param("period", "day")
+                        .param("date", "2025-01-15"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sellerId").value(1))
+                .andExpect(jsonPath("$.sellerName").value("Alice"))
+                .andExpect(jsonPath("$.totalAmount").value(500.0));
+    }
+
+    @Test
+    void getTopSeller_invalidPeriod_shouldReturn500() throws Exception {
+        mockMvc.perform(get("/api/analytics/top-seller")
+                        .param("period", "week")
+                        .param("date", "2025-01-15"))
+                .andExpect(status().is4xxClientError())
+                .andExpect(jsonPath("$.error").value("Некорректный аргумент"))
+                .andExpect(jsonPath("$.message").value("Период должен быть day, month, quarter или year"));
+    }
+
+    @Test
+    void getTopSeller_noTransactions_shouldReturn404() throws Exception {
+        when(analyticsService.getTopSellerByPeriod(any(), any()))
+                .thenThrow(new ResourceNotFoundException("Нет транзакций за указанный период"));
+
+        mockMvc.perform(get("/api/analytics/top-seller")
+                        .param("period", "month")
+                        .param("date", "2025-01-01"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Ресурс не найден"))
+                .andExpect(jsonPath("$.message").value("Нет транзакций за указанный период"));
+    }
+
+    @Test
+    void getTopSeller_missingPeriod_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/analytics/top-seller")
+                        .param("date", "2025-01-15"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getTopSeller_invalidDateFormat_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/analytics/top-seller")
+                        .param("period", "day")
+                        .param("date", "15-01-2025"))
+                .andExpect(status().isBadRequest());
+    }
+
+
+    @Test
+    void getSellersBelow_shouldReturnList() throws Exception {
+        List<SellerBelowDto> list = List.of(
+                new SellerBelowDto(1L, "Bob", new BigDecimal("100.00")),
+                new SellerBelowDto(2L, "Charlie", new BigDecimal("50.00"))
+        );
+        when(analyticsService.getSellersBelowAmount(any(), any(), eq(new BigDecimal("200.00"))))
+                .thenReturn(list);
+
+        mockMvc.perform(get("/api/analytics/sellers-below")
+                        .param("startDate", "2025-01-01")
+                        .param("endDate", "2025-01-31")
+                        .param("threshold", "200.00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].sellerId").value(1))
+                .andExpect(jsonPath("$[0].sellerName").value("Bob"))
+                .andExpect(jsonPath("$[0].totalAmount").value(100.0))
+                .andExpect(jsonPath("$[1].sellerId").value(2))
+                .andExpect(jsonPath("$[1].sellerName").value("Charlie"))
+                .andExpect(jsonPath("$[1].totalAmount").value(50.0));
+    }
+
+    @Test
+    void getSellersBelow_negativeThreshold_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/analytics/sellers-below")
+                        .param("startDate", "2025-01-01")
+                        .param("endDate", "2025-01-31")
+                        .param("threshold", "-10"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getSellersBelow_zeroThreshold_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/analytics/sellers-below")
+                        .param("startDate", "2025-01-01")
+                        .param("endDate", "2025-01-31")
+                        .param("threshold", "0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getSellersBelow_missingStartDate_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/analytics/sellers-below")
+                        .param("endDate", "2025-01-31")
+                        .param("threshold", "100"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getSellersBelow_invalidDateFormat_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/analytics/sellers-below")
+                        .param("startDate", "01-01-2025")
+                        .param("endDate", "2025-01-31")
+                        .param("threshold", "100"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getSellersBelow_serviceThrowsRuntimeException_shouldReturn500() throws Exception {
+        when(analyticsService.getSellersBelowAmount(any(), any(), any()))
+                .thenThrow(new RuntimeException("Внутренняя ошибка"));
+
+        mockMvc.perform(get("/api/analytics/sellers-below")
+                        .param("startDate", "2025-01-01")
+                        .param("endDate", "2025-01-31")
+                        .param("threshold", "100"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("Внутренняя ошибка сервера"))
+                .andExpect(jsonPath("$.message").value("Внутренняя ошибка"));
     }
 }

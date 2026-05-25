@@ -6,6 +6,7 @@ import ru.shift.crm.dto.SellerCreateResponse;
 import ru.shift.crm.dto.SellerUpdateRequest;
 import ru.shift.crm.dto.SellerUpdateResponse;
 import ru.shift.crm.entity.Seller;
+import ru.shift.crm.exception.ResourceNotFoundException;
 import ru.shift.crm.repository.SellerRepository;
 
 import java.util.List;
@@ -31,7 +32,7 @@ public class SellerService {
 
     public SellerUpdateResponse update(Long id, Seller newSellerData) {
         Seller newSeller = findById(id)
-                .orElseThrow(() -> new RuntimeException("Seller not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Seller not found with id: " + id));
 
         newSeller.setName(newSellerData.getName());
         newSeller.setContactInfo(newSellerData.getContactInfo());
@@ -40,6 +41,8 @@ public class SellerService {
     }
 
     public void delete(Long id) {
-        sellerRepository.deleteById(id);
+        if (sellerRepository.existsById(id)) {
+            sellerRepository.deleteById(id);
+        }
     }
 }

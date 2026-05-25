@@ -7,6 +7,7 @@ import ru.shift.crm.dto.TransactionRequest;
 import ru.shift.crm.dto.TransactionResponse;
 import ru.shift.crm.entity.Seller;
 import ru.shift.crm.entity.Transaction;
+import ru.shift.crm.exception.ResourceNotFoundException;
 import ru.shift.crm.repository.SellerRepository;
 import ru.shift.crm.repository.TransactionRepository;
 
@@ -36,7 +37,7 @@ public class TransactionService {
     @Transactional
     public TransactionResponse createTransaction(TransactionRequest request) {
         Seller seller = sellerRepository.findById(request.sellerId())
-                .orElseThrow(() -> new RuntimeException("Seller not found with id: " + request.sellerId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Seller not found with id: " + request.sellerId()));
 
         Transaction createdTransaction = request.toEntity(seller);
         Transaction repositoryResponse = transactionRepository.save(createdTransaction);
