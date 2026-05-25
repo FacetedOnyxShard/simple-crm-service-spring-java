@@ -42,4 +42,10 @@ public class TransactionService {
         Transaction repositoryResponse = transactionRepository.save(createdTransaction);
         return TransactionResponse.from(repositoryResponse);
     }
+
+    public List<TransactionResponse> getTransactionsBySellerId(Long sellerId) {
+        return transactionRepository.findBySellerId(sellerId).stream()
+                .map(TransactionResponse::from)
+                .toList();
+    }
 }

@@ -4,12 +4,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.shift.crm.dto.SellerCreateRequest;
-import ru.shift.crm.dto.SellerCreateResponse;
-import ru.shift.crm.dto.SellerUpdateRequest;
-import ru.shift.crm.dto.SellerUpdateResponse;
+import ru.shift.crm.dto.*;
 import ru.shift.crm.entity.Seller;
 import ru.shift.crm.service.SellerService;
+import ru.shift.crm.service.TransactionService;
 
 import java.util.List;
 
@@ -18,6 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SellerController {
     private final SellerService sellerService;
+    private final TransactionService transactionService;
 
     @GetMapping
     public List<Seller> getAllSellers() {
@@ -50,5 +49,10 @@ public class SellerController {
     public ResponseEntity<Void> deleteSeller(@PathVariable Long id) {
         sellerService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/transactions")
+    public List<TransactionResponse> getSellerTransactions(@PathVariable Long id) {
+        return transactionService.getTransactionsBySellerId(id);
     }
 }

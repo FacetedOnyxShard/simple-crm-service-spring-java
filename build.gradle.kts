@@ -29,15 +29,23 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
 
-	compileOnly("org.projectlombok:lombok")
-	annotationProcessor("org.projectlombok:lombok")
-	testCompileOnly("org.projectlombok:lombok")
-	testAnnotationProcessor("org.projectlombok:lombok")
+	compileOnly("org.projectlombok:lombok:1.18.46")
+	annotationProcessor("org.projectlombok:lombok:1.18.46")
+	testCompileOnly("org.projectlombok:lombok:1.18.46")
+	testAnnotationProcessor("org.projectlombok:lombok:1.18.46")
 
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
+
+	testImplementation("com.h2database:h2")
+	implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 }
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	jvmArgs = listOf(
+		"-javaagent:${configurations.testRuntimeClasspath.get()
+			.find { it.name.contains("mockito-core") }?.absolutePath ?: ""}",
+		"-Xshare:off"
+	)
 }
