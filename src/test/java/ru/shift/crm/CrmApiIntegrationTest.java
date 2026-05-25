@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import ru.shift.crm.dto.SellerCreateRequest;
 import ru.shift.crm.dto.SellerUpdateRequest;
 import ru.shift.crm.dto.TransactionRequest;
+import ru.shift.crm.dto.analytics.BestPeriodResponse;
 import ru.shift.crm.dto.analytics.SellerBelowDto;
 import ru.shift.crm.dto.analytics.TopSellerResponse;
 import ru.shift.crm.entity.PaymentType;
@@ -24,6 +25,7 @@ import ru.shift.crm.repository.TransactionRepository;
 import ru.shift.crm.service.AnalyticsService;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -376,5 +378,71 @@ class CrmApiIntegrationTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.error").value("Внутренняя ошибка сервера"))
                 .andExpect(jsonPath("$.message").value("Внутренняя ошибка"));
+    }
+
+    @Test
+    void getBestPeriod_shouldReturnBestPeriod() throws Exception {
+        BestPeriodResponse response = new BestPeriodResponse(
+                LocalDateTime.of(2025, 1, 1, 10, 0),
+                LocalDateTime.of(2025, 1, 1, 11, 0),
+                5
+        );
+        when(analyticsService.getBestPeriod(1L, "MONTH")).thenReturn(response);
+
+        mockMvc.perform(get("/api/sellers/1/best-period")
+                        .param("periodSize", "MONTH"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.periodStart").value("2025-01-01T10:00:00"))
+                .andExpect(jsonPath("$.periodEnd").value("2025-01-01T11:00:00"))
+                .andExpect(jsonPath("$.transactionCount").value(5));
+    }
+
+    @Test
+    void getBestPeriod_defaultPeriodSize_shouldReturnBestPeriod() throws Exception {
+        BestPeriodResponse response = new BestPeriodResponse(
+                LocalDateTime.of(2025, 1, 1, 0, 0),
+                LocalDateTime.of(2025, 2, 1, 0, 0),
+                10
+        );
+        when(analyticsService.getBestPeriod(2L, "MONTH")).thenReturn(response);
+
+        mockMvc.perform(get("/api/sellers/2/best-period"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transactionCount").value(10));
+    }
+
+    @Test
+    void getBestPeriod_sellerNotFound_shouldReturn404() throws Exception {
+        when(analyticsService.getBestPeriod(99L, "MONTH"))
+                .thenThrow(new ResourceNotFoundException("Продавец с id 99 не найден"));
+
+        mockMvc.perform(get("/api/sellers/99/best-period"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Ресурс не найден"))
+                .andExpect(jsonPath("$.message").value("Продавец с id 99 не найден"));
+    }
+
+    @Test
+    void getBestPeriod_invalidPeriodSize_shouldReturn400() throws Exception {
+        when(analyticsService.getBestPeriod(1L, "YEAR"))
+                .thenThrow(new IllegalArgumentException("Допустимые периоды: DAY, WEEK, MONTH"));
+
+        mockMvc.perform(get("/api/sellers/1/best-period")
+                        .param("periodSize", "YEAR"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Некорректный аргумент"))
+                .andExpect(jsonPath("$.message").value("Допустимые периоды: DAY, WEEK, MONTH"));
+    }
+
+    @Test
+    void getBestPeriod_noTransactions_shouldReturn404() throws Exception {
+        when(analyticsService.getBestPeriod(1L, "DAY"))
+                .thenThrow(new ResourceNotFoundException("Нет транзакций у продавца"));
+
+        mockMvc.perform(get("/api/sellers/1/best-period")
+                        .param("periodSize", "DAY"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Ресурс не найден"))
+                .andExpect(jsonPath("$.message").value("Нет транзакций у продавца"));
     }
 }
