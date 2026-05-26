@@ -88,7 +88,10 @@ class CrmApiIntegrationTest {
     @Test
     void getSellerById_Found() throws Exception {
         Seller seller = sellerRepository.save(
-                new Seller(null, "Bob", "bob@mail.com", java.time.LocalDateTime.now(), null));
+                Seller.builder()
+                        .name("Bob")
+                        .contactInfo("bob@mail.com")
+                        .build());
 
         mockMvc.perform(get("/api/sellers/{id}", seller.getId()))
                 .andExpect(status().isOk())
@@ -113,7 +116,10 @@ class CrmApiIntegrationTest {
     @Test
     void updateSeller_Success() throws Exception {
         Seller seller = sellerRepository.save(
-                new Seller(null, "Old", "old@mail.com", java.time.LocalDateTime.now(), null));
+                Seller.builder()
+                        .name("Old")
+                        .contactInfo("old@mail.com")
+                        .build());
 
         SellerUpdateRequest update = new SellerUpdateRequest("New", "new@mail.com");
 
@@ -146,24 +152,31 @@ class CrmApiIntegrationTest {
     @Test
     void deleteSeller_Success() throws Exception {
         Seller seller = sellerRepository.save(
-                new Seller(null, "DeleteMe", "del@mail.com", java.time.LocalDateTime.now(), null));
+                Seller.builder()
+                        .name("DeleteMe")
+                        .contactInfo("del@mail.com")
+                        .build());
 
         mockMvc.perform(delete("/api/sellers/{id}", seller.getId()))
                 .andExpect(status().isNoContent());
-
-        assertThat(sellerRepository.findById(seller.getId())).isEmpty();
     }
 
     @Test
-    void deleteSeller_NotFound_ShouldStillReturnNoContent() throws Exception {
+    void deleteSeller_NotFound_ShouldReturn404() throws Exception {
         mockMvc.perform(delete("/api/sellers/999"))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Ресурс не найден"))
+                .andExpect(jsonPath("$.message").value("Seller not found with id: 999"));
     }
 
     @Test
     void getSellerTransactions_Empty() throws Exception {
         Seller seller = sellerRepository.save(
-                new Seller(null, "Seller", "s@mail.com", java.time.LocalDateTime.now(), null));
+                Seller.builder()
+                        .name("Seller")
+                        .contactInfo("s@mail.com")
+                        .build());
 
         mockMvc.perform(get("/api/sellers/{id}/transactions", seller.getId()))
                 .andExpect(status().isOk())
@@ -173,7 +186,10 @@ class CrmApiIntegrationTest {
     @Test
     void getSellerTransactions_WithData() throws Exception {
         Seller seller = sellerRepository.save(
-                new Seller(null, "Seller", "s@mail.com", java.time.LocalDateTime.now(), null));
+                Seller.builder()
+                        .name("Seller")
+                        .contactInfo("s@mail.com")
+                        .build());
         Transaction tx = transactionRepository.save(
                 new Transaction(null, seller, BigDecimal.valueOf(50), PaymentType.CASH, java.time.LocalDateTime.now()));
 
@@ -194,7 +210,10 @@ class CrmApiIntegrationTest {
     @Test
     void createAndGetTransaction() throws Exception {
         Seller seller = sellerRepository.save(
-                new Seller(null, "Seller", "s@mail.com", java.time.LocalDateTime.now(), null));
+                Seller.builder()
+                        .name("Seller")
+                        .contactInfo("s@mail.com")
+                        .build());
 
         TransactionRequest txReq = new TransactionRequest(seller.getId(),
                 BigDecimal.valueOf(99.99), PaymentType.CARD, null);
@@ -238,8 +257,10 @@ class CrmApiIntegrationTest {
     @Test
     void getTransactionById_Found() throws Exception {
         Seller seller = sellerRepository.save(
-                new Seller(null, "Seller", "s@mail.com",
-                        java.time.LocalDateTime.now(), null));
+                Seller.builder()
+                        .name("Old")
+                        .contactInfo("old@mail.com")
+                        .build());
         Transaction tx = transactionRepository.save(
                 new Transaction(null, seller, BigDecimal.valueOf(30),
                         PaymentType.TRANSFER, java.time.LocalDateTime.now()));

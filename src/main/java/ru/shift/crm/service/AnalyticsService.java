@@ -10,6 +10,7 @@ import ru.shift.crm.entity.Transaction;
 import ru.shift.crm.exception.ResourceNotFoundException;
 import ru.shift.crm.repository.SellerRepository;
 import ru.shift.crm.repository.TransactionRepository;
+import ru.shift.crm.repository.projection.TopSellerProjection;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,11 +27,11 @@ public class AnalyticsService {
     private final SellerRepository sellerRepository;
 
     public TopSellerResponse getTopSellerByPeriod(LocalDateTime start, LocalDateTime end) {
-        var topList = transactionRepository.findTopSellerByPeriod(start, end);
+        List<TopSellerProjection> topList = transactionRepository.findTopSellerByPeriod(start, end);
         if (topList.isEmpty()) {
             throw new ResourceNotFoundException("Нет транзакций за указанный период");
         }
-        var top = topList.getFirst();
+        TopSellerProjection top = topList.getFirst();
         return new TopSellerResponse(top.getSellerId(), top.getSellerName(), top.getTotalAmount());
     }
 

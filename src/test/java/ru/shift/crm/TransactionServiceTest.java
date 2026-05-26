@@ -35,7 +35,12 @@ class TransactionServiceTest {
     @InjectMocks
     private TransactionService transactionService;
 
-    private final Seller seller = new Seller(1L, "Test Seller", "test@mail.com", LocalDateTime.now(), null);
+    private final Seller seller = Seller.builder()
+            .id(1L)
+            .name("Test Seller")
+            .contactInfo("test@mail.com")
+            .build();
+
     private final Transaction transaction = new Transaction(10L, seller, BigDecimal.valueOf(100),
             PaymentType.CASH, LocalDateTime.now());
 

@@ -39,6 +39,9 @@ dependencies {
 
 	testImplementation("com.h2database:h2")
 	implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+
+	annotationProcessor("org.junit.jupiter:junit-jupiter-params")
+	testImplementation("org.junit.jupiter:junit-jupiter-params")
 }
 
 tasks.withType<Test> {
