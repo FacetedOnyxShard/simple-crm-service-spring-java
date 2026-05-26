@@ -42,9 +42,13 @@ public class Seller {
     @Builder.Default
     private LocalDateTime registrationDate = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "seller", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "seller")
     @Builder.Default
     @ToString.Exclude
     @JsonIgnore
     private List<Transaction> transactions = new ArrayList<>();
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean deleted = false;
 }

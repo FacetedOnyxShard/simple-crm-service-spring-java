@@ -41,8 +41,9 @@ public class SellerService {
     }
 
     public void delete(Long id) {
-        if (sellerRepository.existsById(id)) {
-            sellerRepository.deleteById(id);
-        }
+        Seller seller = sellerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Seller not found with id: " + id));
+        seller.setDeleted(true);
+        sellerRepository.save(seller);
     }
 }

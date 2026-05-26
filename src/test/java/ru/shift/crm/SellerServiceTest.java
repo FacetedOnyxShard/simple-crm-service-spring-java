@@ -18,6 +18,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -47,7 +48,11 @@ public class SellerServiceTest {
 
     @Test
     void findById_ExistingId_ShouldReturnSeller() {
-        Seller seller = new Seller(1L, "John", "john@mail.com", LocalDateTime.now(), null);
+        Seller seller = Seller.builder()
+                                .id(1L)
+                                .name("John")
+                                .contactInfo("john@mail.com")
+                                .build();
         when(sellerRepository.findById(1L)).thenReturn(Optional.of(seller));
 
         Optional<Seller> result = sellerService.findById(1L);
@@ -68,7 +73,11 @@ public class SellerServiceTest {
     @Test
     void save_ValidSeller_ShouldReturnResponse() {
         Seller seller = Seller.builder().name("Alice").contactInfo("alice@mail.com").build();
-        Seller saved = new Seller(1L, "Alice", "alice@mail.com", LocalDateTime.now(), null);
+        Seller saved = Seller.builder()
+                .id(1L)
+                .name("Alice")
+                .contactInfo("alice@mail.com")
+                .build();
         when(sellerRepository.save(seller)).thenReturn(saved);
 
         SellerCreateResponse response = sellerService.save(seller);
@@ -81,9 +90,19 @@ public class SellerServiceTest {
     @Test
     void update_ExistingSeller_ShouldUpdateAndReturnResponse() {
         Long id = 1L;
-        Seller existing = new Seller(id, "Old", "old@mail.com", LocalDateTime.now().minusDays(1), null);
+        Seller existing = Seller.builder()
+                .id(id)
+                .name("Old")
+                .contactInfo("old@mail.com")
+                .registrationDate(LocalDateTime.now().minusDays(1))
+                .build();
         Seller newData = Seller.builder().name("New").contactInfo("new@mail.com").build();
-        Seller updated = new Seller(id, "New", "new@mail.com", existing.getRegistrationDate(), null);
+        Seller updated = Seller.builder()
+                .id(id)
+                .name("New")
+                .contactInfo("new@mail.com")
+                .registrationDate(existing.getRegistrationDate())
+                .build();
 
         when(sellerRepository.findById(id)).thenReturn(Optional.of(existing));
         when(sellerRepository.save(any(Seller.class))).thenReturn(updated);
@@ -112,23 +131,29 @@ public class SellerServiceTest {
     @Test
     void delete_ShouldCallRepositoryWhenExists() {
         Long id = 1L;
-        when(sellerRepository.existsById(id)).thenReturn(true);
-        doNothing().when(sellerRepository).deleteById(id);
+        Seller seller = new Seller();
+        seller.setId(id);
+
+        when(sellerRepository.findById(id)).thenReturn(Optional.of(seller));
+        when(sellerRepository.save(seller)).thenReturn(seller);
 
         sellerService.delete(id);
 
-        verify(sellerRepository).existsById(id);
-        verify(sellerRepository).deleteById(id);
+        verify(sellerRepository).findById(id);
+        verify(sellerRepository).save(seller);
+        verify(sellerRepository, never()).delete(any());
     }
 
     @Test
     void delete_ShouldNotFailWhenNotExists() {
         Long id = 99L;
-        when(sellerRepository.existsById(id)).thenReturn(false);
+        when(sellerRepository.findById(id)).thenReturn(Optional.empty());
 
-        sellerService.delete(id);
+        assertThrows(ResourceNotFoundException.class, () -> {
+            sellerService.delete(id);
+        });
 
-        verify(sellerRepository).existsById(id);
-        verify(sellerRepository, never()).deleteById(any());
+        verify(sellerRepository).findById(id);
+        verify(sellerRepository, never()).delete(any());
     }
 }

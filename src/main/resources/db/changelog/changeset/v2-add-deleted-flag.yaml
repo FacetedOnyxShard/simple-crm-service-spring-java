@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-deleted-flag
+      author: hikaruvi
+      changes:
+        - addColumn:
+            tableName: sellers
+            columns:
+              - column:
+                  name: deleted
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
